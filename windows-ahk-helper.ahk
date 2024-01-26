@@ -112,22 +112,22 @@ GetSelectedText() {
 
 	; ---------------------------------------------------- Test Output --------------------------------------------------- ;
 	;@Ahk2Exe-IgnoreBegin
-	;MsgBox % "title = " . title
-	;MsgBox % "description = " . description
-	;MsgBox % "mail = " . mail
-	;MsgBox % "name = " . name
-	;MsgBox % "relationship = " . relationship
-	;MsgBox % "adtype = " . adtype
-	;MsgBox % "customer = " . customer
-	;MsgBox % "pubdate = " . pubdate
-	;Return
+	MsgBox % "title = " . title
+	MsgBox % "description = " . description
+	MsgBox % "mail = " . mail
+	MsgBox % "name = " . name
+	MsgBox % "relationship = " . relationship
+	MsgBox % "adtype = " . adtype
+	MsgBox % "customer = " . customer
+	MsgBox % "pubdate = " . pubdate
+	Return
 	;@Ahk2Exe-IgnoreEnd
 
 	; ------------------------------------------ switch focus to outlook window ------------------------------------------ ;
 	;Switch to Outlook Window
-	;if not WinExist("ahk_exe outlook.exe") {
+	if not WinExist("ahk_exe outlook.exe") {
 	;if not WinExist("ahk_exe thunderbird.exe") {
-	if not WinExist("ahk_exe notepad.exe") {
+	;if not WinExist("ahk_exe notepad.exe") {
 		MsgBox "Outlook not detected!, Exiting..."
 		Return
 	}
