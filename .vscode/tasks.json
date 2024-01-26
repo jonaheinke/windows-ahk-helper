@@ -3,7 +3,7 @@
     // for the documentation about the tasks.json format
     "tasks": [
         {
-            "label": "build exe",
+            "label": "build exe file",
             "type": "shell",
             "command": "ahk2exe /in ${file}",
             "problemMatcher": [],
@@ -11,6 +11,12 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "create zip file",
+            "type": "shell",
+            "command": "tar -acf windows-ahk-helper.zip LICENSE windows-ahk-helper.exe",
+            "problemMatcher": []
         }
     ]
 }

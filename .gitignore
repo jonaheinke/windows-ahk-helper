@@ -1,6 +1,6 @@
-CreateShortcutThere.ahk
-RecentRun.ahk
-OnTop.ahk
+names.ahk
+
+inspiration/
 
 *.zip
 *.exe

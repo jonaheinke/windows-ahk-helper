@@ -2,11 +2,13 @@
 #NoEnv
 SendMode Input
 
+#Include functions.ahk
+
 ;@Ahk2Exe-SetName			AutoHotKey Helper For My Work
 ;@Ahk2Exe-SetDescription	Description
 ;@Ahk2Exe-SetCompanyName	Jona Heinke
 ;@Ahk2Exe-SetCopyright		Copyright under MIT license`, Jona Heinke`, 2022-2024
-;@Ahk2Exe-SetVersion		1.2
+;@Ahk2Exe-SetVersion		1.3
 
 ;toggles a window to be always on top
 ^Space::
@@ -27,98 +29,152 @@ F1::
 #IfWinActive ahk_exe explorer.exe
 ^BackSpace::
 	Send {ShiftDown}{CtrlDown}{Left}{CtrlUp}{Left}{ShiftUp}{Del}
+	Return
 
 ;replaces a selected image in Powerpoint with one of your choice and loads the filepath from clipboard
 #IfWinActive ahk_exe POWERPNT.exe
 ^r::
 	Send {AppsKey}bd^{v}{Enter}
+	Return
 
 GetSelectedText() {
 	clipboard := ""
 	Send ^c
 	ClipWait, 1
-	return clipboard
+	Return clipboard
 }
 
-;create new e-mail from YouTrack ticket
+;create new e-mail from YouTrack ticket when pressing Ctrl+M
 #IfWinActive ahk_exe chrome.exe
-^m:: ;Ctrl+M
+^m::
+#IfWinActive ahk_exe firefox.exe
+^m::
+	; ------------------------------------------- retrieve path from clipboard ------------------------------------------- ;
+	;path := clipboard
+	;if(RegExMatch(path, "([a-zA-Z]:|[/\\]|\.)([/\\][^<>:/\\\|\?\*])*[/\\]?")) {
+	;	FileList := []
+	;	path := path . "\*.pdf"
+	;	Loop, "C:\Users\jona-\Downloads\template_latex_ma_de\*.pdf"
+	;		FileList.Push(A_LoopFileName)
+	;	MsgBox % "List: " . join(FileList)
+	;}
+	;else {
+	;	MsgBox "No valid path in clipboard, exiting..."
+	;}
+	;Return
+	;Send !i5s
+	;Sleep 100
+	;Send {F4}^a
+	;SendRaw % path
+	;Send {Enter 2}
+	;SendRaw % file
+	;Send {Enter}
+
+	; ------------------------------------ retrieve title and desciption from YouTrack ----------------------------------- ;
+	Sleep 200
+	ResetModifierKeys()
 	;read information from YouTrack ticket
-	Send {Esc 2}{F2}{Home}^+{End} ;edit ticket, select title (Ctrl because of multiline titles)
+	;Send {Esc 2}{F2}{Home}^+{End} ;edit ticket, select title (Ctrl because of multiline titles)
+	Send {Esc 2}{F2}^a ;edit ticket, select title
 	title := GetSelectedText()
-	Send {Tab}^+{End} ;select description (Ctrl because of multiline descriptions)
+	;Send {Tab}^+{End} ;select description (Ctrl because of multiline descriptions)
+	Send {Tab}^a ;select description
 	Sleep 100
 	description := GetSelectedText()
-	Send {End}+{Tab}{Esc 2} ;deselect desciption, tab backwards to select title, press Esc (only works when title is selected)
+	Send {End}+{Tab}{Esc 3} ;deselect desciption, tab backwards to select title, press Esc (only works when title is selected)
 
+	; ---------------------------------- extract further data from title and description --------------------------------- ;
+	;Extract subject for e-mail
+	subject := RegExReplace(title, "\d{2}-\d{2}(?= )", "Auswertung")
+	subject := RegExReplace(subject, "i) (auf|für) (freiepresse|fp|blick|bl|erzgebirge|erz)\.de\D*", " | ")
+	;subject := RegExReplace(subject, "(?<=\d{5,8})[\|/\s,]+", " ") ; TODO: doesn't work currently
+	subject := RegExReplace(subject, " \d+ ?T\.?", "")
 	;Extract E-Mail Address
 	mail := ""
-	;Loop, Parse, description, `n, `r
-	;{
-	;	line := A_LoopField
-	;	if(RegExMatch(line, "i)(?<=Auftragsbestätigung: )[-_a-zA-Z0-9.+!%]*@[-_a-zA-Z0-9.]*", mail) > 0) {
-	;		Break
-	;	}
-	;}
-	RegExMatch(description, "im)(?<=Auftragsbestätigung: )[-_a-zA-Z0-9.+!%]*@[-_a-zA-Z0-9.]*", mail)
-	
-	;Extract publishing date
-	pubdate := ""
-	RegExMatch(description, "im)(?<=Erscheintag: )\d{2}\.\d{2}\.\d{4}", pubdate)
-
+	RegExMatch(description, "im)(?<=Auftragsbestätigung: )[-_a-zA-Z0-9.+!%]+@[-_a-zA-Z0-9.]+\.[a-zA-Z0-9]{2,}", mail)
+	;Extract name and relationship
+	name := ""
+	RegExMatch(description, "im)(?<=Vermittler: )[-a-zA-ZßäöüÄÖÜ. ]+?(?=Vermittler Nr)", name)
+	name_split := StrSplit(name, " ")
+	first_name := name_split[1]
+	last_name  := name_split[name_split.Length()]
+	relationship := GetRelationshipByName(name)
+	;Extract ad type
+	adtype := GetAdType(title)
+	;Extract customer name
 	customer := RegExReplace(StrSplit(description, "`n")[1], " ?[\d@].*", "")
+	;Extract publishing date
+	day := ""
+	month := ""
+	RegExMatch(description, "im)(?<=Erscheintag: )\d{2}\.(?=\d{2}\.\d{4})", day)
+	RegExMatch(description, "im)(?<=Erscheintag: \d{2}\.)\d{2}(?=\.\d{4})", month)
+	pubdate := RegExReplace(day, "^0", "") . " " . GetMonth(month)
 
-	adtype := ""
-	if(RegExMatch(title, "i)FBA", adtype) > 0) {
-		adtype := "Social-Media "
-	}
-	if(RegExMatch(title, "i)PRA", adtype) > 0) {
-		adtype := "Advertorial "
-	}
-	if(RegExMatch(title, "i)TKA", adtype) > 0) {
-		adtype := "Teaser-Kachel "
-	}
-	if(RegExMatch(title, "i)MED", adtype) > 0) {
-		adtype := "Medium Rectangle "
-	}
-	if(RegExMatch(title, "i)JdT", adtype) > 0) {
-		adtype := "Job des Tages "
-	}
-
-	;Test Output
+	; ---------------------------------------------------- Test Output --------------------------------------------------- ;
+	;@Ahk2Exe-IgnoreBegin
 	;MsgBox % "title = " . title
 	;MsgBox % "description = " . description
 	;MsgBox % "mail = " . mail
-	;MsgBox % "pubdate = " . mail
+	;MsgBox % "name = " . name
+	;MsgBox % "relationship = " . relationship
+	;MsgBox % "adtype = " . adtype
+	;MsgBox % "customer = " . customer
+	;MsgBox % "pubdate = " . pubdate
 	;Return
+	;@Ahk2Exe-IgnoreEnd
 
+	; ------------------------------------------ switch focus to outlook window ------------------------------------------ ;
 	;Switch to Outlook Window
-	if not WinExist("ahk_exe outlook.exe") {
+	;if not WinExist("ahk_exe outlook.exe") {
 	;if not WinExist("ahk_exe thunderbird.exe") {
+	if not WinExist("ahk_exe notepad.exe") {
 		MsgBox "Outlook not detected!, Exiting..."
 		Return
 	}
 	WinActivate
-	Sleep 500 ;just to be sure
-
-	;Create New E-Mail
-	Send ^+m
-	;Send ^n
 	Sleep 500
-	;TODO: extract and paste e-mail
+	ResetModifierKeys()
+
+	; ------------------------------------------------- create new email ------------------------------------------------- ;
+	;Shortcut for New E-Mail
+	Send ^+m
+	;Send ^n ;Shortcut in Thunderbird
+	Sleep 500
+	ResetModifierKeys()
 	SendRaw % mail
-	Send {Enter}{Tab 2}
+	Send {Tab 3}
+	;Send +{Tab}
+	SendRaw % subject
+	;Send {Home}^{Del 3}Auswertung {Tab} ;replace date with "Auswertung"
 	;@Ahk2Exe-IgnoreBegin
-	Send +{Tab}
+	;Send {End}
+	Send {Enter 2}
 	;@Ahk2Exe-IgnoreEnd
-	SendRaw % title
-	Send {Home}^{Del 3}Auswertung{Space}{End}{Tab} ;replace date with "Auswertung"
-	Send Guten Tag ,{Enter}hier ist Ihre{Space}
+	Send {Tab}
+	Sleep 100
+	if(relationship == 2) {
+		Send Hallo{Space}
+		SendRaw % first_name
+		Send `,{Enter}hier ist deine{Space}
+	} else {
+		Send Guten Tag{Space}
+		if(relationship == 1) {
+			Send Frau{Space}
+			SendRaw % last_name
+		} else {
+			Send Herr{Space}
+			SendRaw % last_name
+		}
+		Send `,{Enter}hier ist Ihre{Space}
+	}
 	SendRaw % adtype
 	Send Auswertung von{Space}
-	;TODO: extract and paste name
 	SendRaw % customer
 	Send {Space}vom{Space}
-	;TODO: extract and paste date
+	Send ^{Left}{Del}v{End} ;remove large V that sometimes appears
 	SendRaw % pubdate
 	Send .
+
+	; --------------------------------------------------- exit program --------------------------------------------------- ;
+	ResetModifierKeys()
+	Return
