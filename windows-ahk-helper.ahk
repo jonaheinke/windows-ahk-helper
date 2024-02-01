@@ -8,7 +8,7 @@ SendMode Input
 ;@Ahk2Exe-SetDescription	Description
 ;@Ahk2Exe-SetCompanyName	Jona Heinke
 ;@Ahk2Exe-SetCopyright		Copyright under MIT license`, Jona Heinke`, 2022-2024
-;@Ahk2Exe-SetVersion		1.3
+;@Ahk2Exe-SetVersion		1.4
 
 ;toggles a window to be always on top
 ^Space::
@@ -50,25 +50,14 @@ GetSelectedText() {
 #IfWinActive ahk_exe firefox.exe
 ^m::
 	; ------------------------------------------- retrieve path from clipboard ------------------------------------------- ;
-	;path := clipboard
-	;if(RegExMatch(path, "([a-zA-Z]:|[/\\]|\.)([/\\][^<>:/\\\|\?\*])*[/\\]?")) {
-	;	FileList := []
-	;	path := path . "\*.pdf"
-	;	Loop, "C:\Users\jona-\Downloads\template_latex_ma_de\*.pdf"
-	;		FileList.Push(A_LoopFileName)
-	;	MsgBox % "List: " . join(FileList)
-	;}
-	;else {
-	;	MsgBox "No valid path in clipboard, exiting..."
-	;}
-	;Return
-	;Send !i5s
-	;Sleep 100
-	;Send {F4}^a
-	;SendRaw % path
-	;Send {Enter 2}
-	;SendRaw % file
-	;Send {Enter}
+	path := clipboard
+	file := ""
+	if(RegExMatch(path, "([a-zA-Z]:|[/\\]|\.)([/\\][^<>:/\\\|\?\*])*[/\\]?"))
+		Loop, %path%\*.pdf
+			if(RegExMatch(A_LoopFileName, "^20\d{2}-\d{2}-\d{2}")) {
+				file := A_LoopFileName
+				break
+			}
 
 	; ------------------------------------ retrieve title and desciption from YouTrack ----------------------------------- ;
 	Sleep 200
@@ -86,8 +75,8 @@ GetSelectedText() {
 	; ---------------------------------- extract further data from title and description --------------------------------- ;
 	;Extract subject for e-mail
 	subject := RegExReplace(title, "\d{2}-\d{2}(?= )", "Auswertung")
-	subject := RegExReplace(subject, "i) (auf|für) (freiepresse|fp|blick|bl|erzgebirge|erz)\.de\D*", " | ")
-	;subject := RegExReplace(subject, "(?<=\d{5,8})[\|/\s,]+", " ") ; TODO: doesn't work currently
+	subject := RegExReplace(subject, "i) (auf|für) (freiepresse|fp|blick|bl|erzgebirge|erz)\.de\D*(\d\D+)*", " | ")
+	subject := RegExReplace(subject, "(?<=\d{6})[\|/\s,]+", " ")
 	subject := RegExReplace(subject, " \d+ ?T\.?", "")
 	;Extract E-Mail Address
 	mail := ""
@@ -113,6 +102,7 @@ GetSelectedText() {
 	; ---------------------------------------------------- Test Output --------------------------------------------------- ;
 	;@Ahk2Exe-IgnoreBegin
 	MsgBox % "title = " . title
+	MsgBox % "subject = " . subject
 	MsgBox % "description = " . description
 	MsgBox % "mail = " . mail
 	MsgBox % "name = " . name
@@ -120,13 +110,13 @@ GetSelectedText() {
 	MsgBox % "adtype = " . adtype
 	MsgBox % "customer = " . customer
 	MsgBox % "pubdate = " . pubdate
-	Return
+	;Return
 	;@Ahk2Exe-IgnoreEnd
 
 	; ------------------------------------------ switch focus to outlook window ------------------------------------------ ;
 	;Switch to Outlook Window
-	if not WinExist("ahk_exe outlook.exe") {
-	;if not WinExist("ahk_exe thunderbird.exe") {
+	;if not WinExist("ahk_exe outlook.exe") {
+	if not WinExist("ahk_exe thunderbird.exe") {
 	;if not WinExist("ahk_exe notepad.exe") {
 		MsgBox "Outlook not detected!, Exiting..."
 		Return
@@ -142,7 +132,7 @@ GetSelectedText() {
 	Sleep 500
 	ResetModifierKeys()
 	SendRaw % mail
-	Send {Tab 3}
+	Send {Tab 2}
 	;Send +{Tab}
 	SendRaw % subject
 	;Send {Home}^{Del 3}Auswertung {Tab} ;replace date with "Auswertung"
@@ -155,7 +145,9 @@ GetSelectedText() {
 	if(relationship == 2) {
 		Send Hallo{Space}
 		SendRaw % first_name
-		Send `,{Enter}hier ist deine{Space}
+		Send `,{Enter}
+		Sleep 100
+		Send hier ist deine{Space}
 	} else {
 		Send Guten Tag{Space}
 		if(relationship == 1) {
@@ -165,7 +157,9 @@ GetSelectedText() {
 			Send Herr{Space}
 			SendRaw % last_name
 		}
-		Send `,{Enter}hier ist Ihre{Space}
+		Send `,{Enter}
+		Sleep 100
+		Send hier ist Ihre{Space}
 	}
 	SendRaw % adtype
 	Send Auswertung von{Space}
@@ -174,6 +168,33 @@ GetSelectedText() {
 	Send ^{Left}{Del}v{End} ;remove large V that sometimes appears
 	SendRaw % pubdate
 	Send .
+
+	; -------------------------------------------------- attach PDF file ------------------------------------------------- ;
+	if(file != "") {
+		;@Ahk2Exe-IgnoreBegin
+		if not WinExist("ahk_exe thunderbird.exe") {
+			MsgBox "Thunderbird not detected!, Exiting..."
+			Return
+		}
+		WinActivate
+		Sleep 500
+		Send ^n
+		Sleep 500
+		Send ^+a
+		Sleep 500
+		;@Ahk2Exe-IgnoreEnd
+		Send !i5s
+		Sleep 500
+		Send {F4}^a
+		SendRaw % path
+		Sleep 500
+		Send {Enter}
+		Sleep 250
+		Send !n
+		SendRaw % file
+		Sleep 100
+		Send {Enter}
+		}
 
 	; --------------------------------------------------- exit program --------------------------------------------------- ;
 	ResetModifierKeys()
